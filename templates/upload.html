@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Upload Files</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Floating + Files Button */
+      .floating-button {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        z-index: 50;
+      }
+      /* Floating Bottom Controls with Glass Effect */
+      .floating-header {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        backdrop-filter: blur(20px);
+        background-color: rgba(255, 255, 255, 0.5);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Files Table Container (AJAX loaded) -->
+    <div id="filesTableContainer" class="p-4 pb-20">
+      <div class="text-gray-500">Loading files...</div>
+    </div>
+    
+    <!-- Floating + Files Button -->
+    <div class="floating-button">
+      <button id="floatingFileButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-4 rounded-full shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+      <!-- Hidden file input -->
+      <input type="file" id="fileInput" multiple class="hidden">
+    </div>
+    
+    <!-- Floating Bottom Header with Controls -->
+    <div class="floating-header shadow-lg p-4 flex flex-wrap items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <input type="text" id="searchBox" placeholder="Search by file name..."
+          class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500">
+        <select id="fileTypeSelect"
+          class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500">
+          <option value="all">All Types</option>
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="jpg">JPG</option>
+          <option value="exe">EXE</option>
+          <option value="mp4">MP4</option>
+        </select>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="clearFilterBtn"
+          class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md transition">
+          Clear Filter
+        </button>
+        <button id="deleteAllBtn"
+          class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md transition">
+          Delete All Files
+        </button>
+        <a href="{{ url_for('logout') }}" 
+           class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">
+          Logout
+        </a>
+      </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script>
+      // When the page loads, fetch the files table and set up filter event listeners.
+      window.onload = function() {
+          updateFileTable();
+          document.getElementById('searchBox').addEventListener('input', updateTableFilters);
+          document.getElementById('fileTypeSelect').addEventListener('change', updateTableFilters);
+          document.getElementById('clearFilterBtn').addEventListener('click', function(){
+              document.getElementById('searchBox').value = "";
+              document.getElementById('fileTypeSelect').value = "all";
+              updateTableFilters();
+          });
+      };
+
+      // When the floating + Files button is clicked, trigger the hidden file input.
+      document.getElementById('floatingFileButton').addEventListener('click', function() {
+          document.getElementById('fileInput').click();
+      });
+
+      // When files are selected, start uploading immediately.
+      document.getElementById('fileInput').addEventListener('change', async function() {
+          const files = document.getElementById('fileInput').files;
+          if (files.length === 0) return;
+          updateUploadStatus(files.length + " file(s) to upload.");
+          const fileArray = Array.from(files);
+          await uploadFilesSequentially(fileArray);
+          updateUploadStatus("All files uploaded.");
+          setTimeout(() => { clearStatus('uploadStatusFloating'); }, 5000);
+          updateFileTable();
+      });
+
+      async function uploadFilesSequentially(files) {
+          for (let i = 0; i < files.length; i++) {
+              updateUploadStatus((files.length - i) + " file(s) remaining to upload.");
+              try {
+                  await uploadSingleFile(files[i]);
+              } catch (err) {
+                  console.error("Error uploading file:", err);
+              }
+              updateFileTable();
+          }
+      }
+
+      function uploadSingleFile(file) {
+          return new Promise(function(resolve, reject) {
+              const xhr = new XMLHttpRequest();
+              const formData = new FormData();
+              formData.append('file', file);
+              
+              xhr.onreadystatechange = function() {
+                  if (xhr.readyState === XMLHttpRequest.DONE) {
+                      if (xhr.status === 200) {
+                          resolve(xhr.responseText);
+                      } else {
+                          reject(xhr.responseText);
+                      }
+                  }
+              };
+              
+              xhr.open('POST', '{{ url_for("upload_file") }}', true);
+              xhr.send(formData);
+          });
+      }
+      
+      function updateUploadStatus(message) {
+          let statusEl = document.getElementById('uploadStatusFloating');
+          if (!statusEl) {
+              statusEl = document.createElement('div');
+              statusEl.id = 'uploadStatusFloating';
+              statusEl.className = "fixed bottom-20 right-20 bg-white p-2 rounded shadow text-sm text-gray-700";
+              document.body.appendChild(statusEl);
+          }
+          statusEl.innerText = message;
+      }
+      
+      function clearStatus(elementId) {
+          const el = document.getElementById(elementId);
+          if (el) {
+              el.remove();
+          }
+      }
+      
+      // Delete all files sequentially using the single-file delete endpoint.
+      document.getElementById('deleteAllBtn').addEventListener('click', function() {
+          if (confirm("Are you sure you want to delete all files?")) {
+              const fileCards = document.querySelectorAll("[data-file-id]");
+              const fileIds = Array.from(fileCards).map(card => card.getAttribute("data-file-id"));
+              if (fileIds.length === 0) {
+                  alert("No files to delete.");
+                  return;
+              }
+              updateDeleteStatus(fileIds.length + " file(s) to delete.");
+              deleteFilesSequentially(fileIds);
+          }
+      });
+      
+      function deleteFilesSequentially(fileIds) {
+          let index = 0;
+          function next() {
+              if (index >= fileIds.length) {
+                  updateDeleteStatus("All files deleted.");
+                  setTimeout(() => { clearStatus('deleteStatusFloating'); }, 5000);
+                  updateFileTable();
+                  return;
+              }
+              deleteSingleFile(fileIds[index]).then(() => {
+                  index++;
+                  updateDeleteStatus((fileIds.length - index) + " file(s) remaining to delete.");
+                  updateFileTable();
+                  next();
+              }).catch((err) => {
+                  console.error("Error deleting file:", err);
+                  index++;
+                  updateDeleteStatus((fileIds.length - index) + " file(s) remaining to delete.");
+                  next();
+              });
+          }
+          next();
+      }
+      
+      function deleteSingleFile(fileId) {
+          return new Promise(function(resolve, reject) {
+              const xhr = new XMLHttpRequest();
+              xhr.onreadystatechange = function() {
+                  if (xhr.readyState === XMLHttpRequest.DONE) {
+                      if (xhr.status === 200 || xhr.status === 302) {
+                          resolve(xhr.responseText);
+                      } else {
+                          reject(xhr.responseText);
+                      }
+                  }
+              };
+              xhr.open('GET', '/delete/' + fileId, true);
+              xhr.send();
+          });
+      }
+      
+      function updateDeleteStatus(message) {
+          let statusEl = document.getElementById('deleteStatusFloating');
+          if (!statusEl) {
+              statusEl = document.createElement('div');
+              statusEl.id = 'deleteStatusFloating';
+              statusEl.className = "fixed bottom-20 left-20 bg-white p-2 rounded shadow text-sm text-gray-700";
+              document.body.appendChild(statusEl);
+          }
+          statusEl.innerText = message;
+      }
+      
+      // Function to update the files table by fetching the latest snippet.
+      function updateFileTable() {
+          var xhr = new XMLHttpRequest();
+          xhr.onreadystatechange = function() {
+              if (xhr.readyState === 4 && xhr.status === 200) {
+                  document.getElementById("filesTableContainer").innerHTML = xhr.responseText;
+                  updateTableFilters();
+              }
+          }
+          xhr.open("GET", "{{ url_for('files_table') }}", true);
+          xhr.send();
+      }
+      
+      // Filter function: searches by file name and file type.
+      function updateTableFilters() {
+          const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+          const fileTypeFilter = document.getElementById('fileTypeSelect').value.toLowerCase();
+          const fileCards = document.querySelectorAll("[data-file-id]");
+          fileCards.forEach(card => {
+              const filename = card.getAttribute("data-file-name") || card.getAttribute("data-filename") || "";
+              const filetype = card.getAttribute("data-file-type") || card.getAttribute("data-filetype") || "";
+              let show = true;
+              if (searchTerm && !filename.includes(searchTerm)) {
+                  show = false;
+              }
+              if (fileTypeFilter !== "all" && filetype !== fileTypeFilter) {
+                  show = false;
+              }
+              card.style.display = show ? "" : "none";
+          });
+      }
+    </script>
+  </body>
+</html>

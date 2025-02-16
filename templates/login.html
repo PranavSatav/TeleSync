@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/1.1.2/tailwind.min.css">
+
+</head>
+<body>
+
+  <section class="flex flex-col md:flex-row h-screen items-center">
+
+    <div class="bg-blue-600 hidden lg:block w-full md:w-1/2 xl:w-2/3 h-screen">
+      <img src="https://i.postimg.cc/tJh3Ht4D/thumb-1920-824582.png" alt="Login image" class="w-full h-full object-cover">
+    </div>
+  
+    <div class="bg-white w-full md:max-w-md lg:max-w-full md:mx-auto md:mx-0 md:w-1/2 xl:w-1/3 h-screen px-6 lg:px-16 xl:px-12 flex items-center justify-center">
+  
+      <div class="w-full h-100">
+   
+        <h1 class="text-xl md:text-2xl font-bold leading-tight mt-12">Log in with Telegram </h1>
+  
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul class="mt-4 text-red-600">
+              {% for message in messages %}
+                <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+  
+        <!-- OTP Login Form with Country Code Dropdown -->
+        <form id="otp_form" class="mt-6" action="#" method="POST">
+          <div class="flex">
+            <!-- Country Code Dropdown -->
+            <select id="country_code" class="w-1/3 px-4 py-3 rounded-l-lg bg-gray-200 mt-2 border focus:border-blue-500 focus:bg-white focus:outline-none">
+              <option value="+91">India (+91)</option>
+              <option value="+1">USA (+1)</option>
+              <option value="+44">UK (+44)</option>
+            </select>
+            <!-- Phone Number Input -->
+            <input type="text" id="phone_number" name="phone" placeholder="Enter Phone Number" required
+                   class="w-2/3 px-4 py-3 rounded-r-lg bg-gray-200 mt-2 border focus:border-blue-500 focus:bg-white focus:outline-none">
+          </div>
+          <button type="submit" class="w-full block bg-blue-500 hover:bg-blue-400 focus:bg-blue-400 text-white font-semibold rounded-lg px-4 py-3 mt-6">
+            Send OTP 
+          </button>
+        </form>
+  
+        <hr class="my-6 border-gray-300 w-full">
+  
+        <button type="button" class="w-full block bg-white hover:bg-gray-100 focus:bg-gray-100 text-gray-900 font-semibold rounded-lg px-4 py-3 border border-gray-300">
+          <div class="flex items-center justify-center">
+            <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 1 0 0 4h16a2 2 0 1 0 0-4H4Zm0 6h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Zm10.707 5.707a1 1 0 0 0-1.414-1.414l-.293.293V12a1 1 0 1 0-2 0v2.586l-.293-.293a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l2-2Z" clip-rule="evenodd"/>
+            </svg>
+            
+            <span class="ml-4">Continue as Guest</span>
+          </div>
+        </button>
+  
+        <p class="mt-8">How does this even work? <a href="#" class="text-blue-500 hover:text-blue-700 font-semibold">Know More!</a></p>
+        <p class="text-sm text-gray-500 mt-12">&copy; Source Code - <a class="text-blue-500 hover:text-blue-700 font-semibold" href="https://github.com/pranavsatav">GitHub.</a></p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- JavaScript to combine country code with phone number -->
+  <script>
+    document.getElementById('otp_form').addEventListener('submit', function() {
+      var countryCode = document.getElementById('country_code').value;
+      var phoneInput = document.getElementById('phone_number');
+      // Prepend the selected country code to the phone number
+      phoneInput.value = countryCode + phoneInput.value;
+    });
+  </script>
+  
+  
+  
+</body>
+</html>

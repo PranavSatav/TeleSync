@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Login with Telegram</title>
+  </head>
+  <body>
+    <h1>Login</h1>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color: red;">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+      <label for="phone">Phone Number:</label>
+      <input type="text" name="phone" placeholder="+1234567890" required>
+      <button type="submit">Send OTP</button>
+    </form>
+  </body>
+</html>
